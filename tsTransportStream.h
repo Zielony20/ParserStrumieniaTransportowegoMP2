@@ -1,5 +1,4 @@
 //#pragma once
-#include "tsCommon.h"
 #include <string>
 
 /*
@@ -68,7 +67,7 @@ public:
 
 protected:
   //TODO - header fields
-
+  uint32_t header;
   uint8_t SB;
   uint8_t E;
   uint8_t S;
@@ -80,26 +79,26 @@ protected:
 
 
 public:
-  void     Reset();
+  void     Reset(); /*TODO*/
   int32_t  Parse(const uint8_t* Input);
   void     Print() const;
   
 
 public:
   //TODO - direct acces to header values
-  uint8_t getSB();
-  uint8_t getE();
-  uint8_t getS();
-  uint8_t getT();
+  uint8_t getSyncByte();
+  uint8_t getTransportErrorIndicator();
+  uint8_t getPayloadUnitStartIndicator();
+  uint8_t getTransportPriority();
   uint16_t getPID();
-  uint8_t getTSC();
-  uint8_t getAFC();
-  uint8_t getCC();
+  uint8_t getTransportScramblingControl();
+  uint8_t getAdaptationFieldControl();
+  uint8_t getContinuityCounter();
 public:
   //TODO
   bool     hasAdaptationField() const;
   bool     hasPayload        () const { /*TODO*/ }
-  uint16_t convertFrom8To16(uint8_t hi, uint8_t lo);
+
 };
 
 //=============================================================================================================================================================================
@@ -113,126 +112,94 @@ uint8_t AFL;
 uint8_t FLAGS;
 uint8_t AFC;
 public:
-void Reset();
+void Reset(); /*TODO*/
 int32_t Parse(const uint8_t* Input, uint8_t AdaptationFieldControl);
 void Print() const;
 public:
 //derrived values
-uint32_t getNumBytes() const { }
+    uint32_t getNumBytes() const;
+    uint8_t getAdaptationFieldLenght() {
+        return AFL;
+    }
+
 };
 
 //=============================================================================================================================================================================
 
 
-
-
-int32_t xTS_PacketHeader::Parse(const uint8_t* Input){
-
-
-xTS_PacketHeader::SB = Input[0];
-xTS_PacketHeader::E = (Input[1] & 0x80) ? 1:0;
-xTS_PacketHeader::S = (Input[1] & 0x40) ? 1:0;
-xTS_PacketHeader::T = (Input[1] & 0x20) ? 1:0;
-xTS_PacketHeader::PID = convertFrom8To16((Input[1] & 0x73),Input[2]);
-xTS_PacketHeader::TSC = (Input[3] & 0xC0)>>6 ;
-xTS_PacketHeader::AFC = (Input[3] & 0x30)>>4 ;
-xTS_PacketHeader::CC = Input[3] & 0xF;
-
-
-}
-
-void xTS_PacketHeader::Reset(){
-
-}
-void xTS_PacketHeader::Print() const{
-
-    printf( "SB: %d ", SB );
-    printf( "E: %d ", E  );
-    printf( "S: %d ", S  );
-    printf( "T: %d ", T  );
-    printf( "PID: %d ", PID);
-    printf( "TSC: %d ", TSC);
-    printf( "AFC: %d ", AFC);
-    printf( "CC: %d ", CC );
-
-}
-uint16_t xTS_PacketHeader::convertFrom8To16(uint8_t hi, uint8_t lo){
-    uint16_t result = 0x0000;
-
-    result = hi;
-    result = result << 8;
-    result |= lo;
-    return result;
-}
-
-bool xTS_PacketHeader::hasAdaptationField() const{
-  if( AFC == 2 or AFC == 3  )
-    return true;
-  else
-    return false;
-}
-
-  uint8_t xTS_PacketHeader::getSB(){
-  return SB;
-}
-  uint8_t xTS_PacketHeader::getE(){
-    return E;
-  }
-  uint8_t xTS_PacketHeader::getS(){
-    return S;
-  }
-  uint8_t xTS_PacketHeader::getT(){
-    return T;
-  }
-  uint16_t xTS_PacketHeader::getPID(){
-    return PID;
-  }
-  uint8_t xTS_PacketHeader::getTSC(){
-    return TSC;
-  }
-  uint8_t xTS_PacketHeader::getAFC(){
-    return AFC;
-  }
-  uint8_t xTS_PacketHeader::getCC(){
-    return CC;
-  }
+class xPES_PacketHeader
+{
+public:
+enum eStreamId : uint8_t
+{
+eStreamId_program_stream_map = 0xBC,
+eStreamId_padding_stream = 0xBE,
+eStreamId_private_stream_2 = 0xBF,
+eStreamId_ECM = 0xF0,
+eStreamId_EMM = 0xF1,
+eStreamId_program_stream_directory = 0xFF,
+eStreamId_DSMCC_stream = 0xF2,
+eStreamId_ITUT_H222_1_type_E = 0xF8,
+};
+protected:
+    //PES packet header
+    uint32_t m_PacketStartCodePrefix;
+    uint8_t m_StreamId;
+    uint16_t m_PacketLength;
+    uint16_t m_HeaderLength;
+    public:
+        void Reset() {};
+    int32_t Parse(const uint8_t* Input);
+    void Print() const;
+    public:
+        //PES packet header
+        uint32_t getPacketStartCodePrefix() const { return m_PacketStartCodePrefix; }
+        uint8_t getStreamId() const { return m_StreamId; }
+        uint16_t getPacketLength() const { return m_PacketLength; }
+        uint8_t getHeaderLength() const { return m_HeaderLength/8; }
+};
 
 //=============================================================================================================================================================================
 
 
-int32_t xTS_AdaptationField::Parse(const uint8_t* Input, uint8_t AdaptationFieldControl){
-  AFC = AdaptationFieldControl;
-  if(AdaptationFieldControl == 2 or AdaptationFieldControl == 3){
-    AFL = Input[4];
-    FLAGS = Input[5];
-  }
-  else {
-        AFL = 0;
-        FLAGS = 0;
-      }
-     
-
-  return 0;
-}
-void xTS_AdaptationField::Print() const{
-
-  if(AFL!=0){
-    printf( "AFL: %d ", AFL );
-    printf( "DC: %d ", (FLAGS & 0x80)?1:0  );
-    printf( "RA: %d ", (FLAGS & 0x40)?1:0  );
-    printf( "SP: %d ", (FLAGS & 0x20)?1:0  );
-    printf( "PR: %d ", (FLAGS & 0x10)?1:0  );
-    printf( "OR: %d ", (FLAGS & 0x8)?1:0  );
-    printf( "SP: %d ", (FLAGS & 0x4)?1:0  );
-    printf( "TP: %d ", (FLAGS & 0x2)?1:0  );
-    printf( "EX: %d ", (FLAGS & 0x1)?1:0  );
-  }
-  if(AFC==3){
-    printf( "Stuffing: %d ", AFL-1  );
-  }
+class xPES_Assembler
+{
+public:
+    enum class eResult : int32_t
+    {
+        UnexpectedPID = 1,
+        StreamPackedLost,
+        AssemblingStarted,
+        AssemblingContinue,
+        AssemblingFinished,
+    };
+protected:
+    //setup
+    int32_t m_PID;
+    //buffer
+    uint8_t* m_Buffer;
+    uint32_t m_BufferSize;
+    uint32_t m_DataOffset;
+    //operation
+    int8_t m_LastContinuityCounter;
+    bool m_Started;
+    xPES_PacketHeader m_PESH;
+public:
+    xPES_Assembler() { Init(136); }
+    ~xPES_Assembler() {}
+    void Init(int32_t PID);
+    eResult AbsorbPacket(const uint8_t* TransportStreamPacket, xTS_PacketHeader* PacketHeader,  xTS_AdaptationField* AdaptationField);
+    void PrintPESH() const { m_PESH.Print(); }
+    uint8_t getHeaderLenght() const { return m_PESH.getHeaderLength(); }
+    uint8_t* getPacket() { return m_Buffer; }
+    int32_t getNumPacketBytes() const { return m_DataOffset; }
+    void xBufferReset();
+protected:
     
+    void xBufferAppend(const uint8_t* Data, uint32_t Size);
 
-}
+
+};
 
 //=============================================================================================================================================================================
 

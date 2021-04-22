@@ -34,3 +34,39 @@ static inline  int64_t xSwapBytes64( int64_t Value) { return __builtin_bswap64(V
 #else
 #error Unrecognized compiler
 #endif
+
+
+uint32_t convertFrom8To32(uint8_t first, uint8_t second, uint8_t third, uint8_t fourth) {
+    uint32_t result = 0x0000;
+
+    result = first;
+    result = result << 8;
+    result |= second;
+    result = result << 8;
+    result |= third;
+    result = result << 8;
+    result |= fourth;
+
+    return result;
+}
+uint32_t convertFrom8To24(uint8_t first, uint8_t second, uint8_t third) {
+    uint32_t result = 0x0000;
+
+    result = first;
+    result = result << 8;
+    result |= second;
+    result = result << 8;
+    result |= third;
+
+    return result;
+}
+
+
+uint16_t convertFrom8To16(uint8_t hi, uint8_t lo) {
+    uint16_t result = 0x0000;
+
+    result = hi;
+    result = result << 8;
+    result |= lo;
+    return result;
+}
