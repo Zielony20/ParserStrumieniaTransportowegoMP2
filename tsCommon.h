@@ -5,6 +5,7 @@
 #include <cfloat>
 #include <climits>
 #include <cstddef>
+#include <cstdarg>
 
 #define NOT_VALID  -1
 
@@ -35,6 +36,33 @@ static inline  int64_t xSwapBytes64( int64_t Value) { return __builtin_bswap64(V
 #error Unrecognized compiler
 #endif
 
+
+
+
+uint64_t convertFrom8To64(uint8_t b1, uint8_t b2, uint8_t b3, uint8_t b4,
+    uint8_t b5, uint8_t b6, uint8_t b7, uint8_t b8) 
+
+{
+    uint64_t result = 0x0000;
+
+    result = b1;
+    result = result << 8;
+    result |= b2;
+    result = result << 8;
+    result |= b3;
+    result = result << 8;
+    result |= b4;
+    result = result << 8;
+    result |= b5;
+    result = result << 8;
+    result |= b6;
+    result = result << 8;
+    result |= b7;
+    result = result << 8;
+    result |= b8;
+
+    return result;
+}
 
 uint32_t convertFrom8To32(uint8_t first, uint8_t second, uint8_t third, uint8_t fourth) {
     uint32_t result = 0x0000;
@@ -68,5 +96,24 @@ uint16_t convertFrom8To16(uint8_t hi, uint8_t lo) {
     result = hi;
     result = result << 8;
     result |= lo;
+    return result;
+}
+
+
+
+template<class T>
+T connectBinaryWords(uint8_t num ...) {
+    T result = 0x0000;
+
+    va_list ap;
+    va_start(ap, num);
+    result = va_arg(ap, uint8_t);
+
+    for (int i = 1; i < num; i++) {
+        result = result << 8;
+        result |= va_arg(ap, uint8_t);
+
+    }
+
     return result;
 }

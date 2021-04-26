@@ -77,13 +77,11 @@ protected:
   uint8_t AFC;
   uint8_t CC;
 
-
 public:
   void     Reset(); /*TODO*/
   int32_t  Parse(const uint8_t* Input);
   void     Print() const;
   
-
 public:
   //TODO - direct acces to header values
   uint8_t getSyncByte();
@@ -111,6 +109,8 @@ uint8_t AFL;
 //mandatory fields
 uint8_t FLAGS;
 uint8_t AFC;
+uint64_t PCR;
+uint64_t OPCR;
 public:
 void Reset(); /*TODO*/
 int32_t Parse(const uint8_t* Input, uint8_t AdaptationFieldControl);
@@ -118,9 +118,7 @@ void Print() const;
 public:
 //derrived values
     uint32_t getNumBytes() const;
-    uint8_t getAdaptationFieldLenght() {
-        return AFL;
-    }
+    uint8_t getAdaptationFieldLenght();
 
 };
 
@@ -153,10 +151,10 @@ protected:
     void Print() const;
     public:
         //PES packet header
-        uint32_t getPacketStartCodePrefix() const { return m_PacketStartCodePrefix; }
-        uint8_t getStreamId() const { return m_StreamId; }
-        uint16_t getPacketLength() const { return m_PacketLength; }
-        uint8_t getHeaderLength() const { return m_HeaderLength/8; }
+        uint32_t getPacketStartCodePrefix() const;
+        uint8_t getStreamId() const;
+        uint16_t getPacketLength() const;
+        uint8_t getHeaderLength() const;
 };
 
 //=============================================================================================================================================================================
@@ -179,7 +177,6 @@ protected:
     //buffer
     uint8_t* m_Buffer;
     uint32_t m_BufferSize;
-    uint32_t m_DataOffset;
     //operation
     int8_t m_LastContinuityCounter;
     bool m_Started;
@@ -189,10 +186,10 @@ public:
     ~xPES_Assembler() {}
     void Init(int32_t PID);
     eResult AbsorbPacket(const uint8_t* TransportStreamPacket, xTS_PacketHeader* PacketHeader,  xTS_AdaptationField* AdaptationField);
-    void PrintPESH() const { m_PESH.Print(); }
-    uint8_t getHeaderLenght() const { return m_PESH.getHeaderLength(); }
-    uint8_t* getPacket() { return m_Buffer; }
-    int32_t getNumPacketBytes() const { return m_DataOffset; }
+    void PrintPESH() const;
+    uint8_t getHeaderLenght() const;
+    uint8_t* getPacket();
+    int32_t getNumPacketBytes() const;
     void xBufferReset();
 protected:
     
