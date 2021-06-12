@@ -78,12 +78,12 @@ protected:
   uint8_t CC;
 
 public:
-  void     Reset(); /*TODO*/
+  void     Reset(); 
   int32_t  Parse(const uint8_t* Input);
   void     Print() const;
   
 public:
-  //TODO - direct acces to header values
+  
   uint8_t getSyncByte();
   uint8_t getTransportErrorIndicator();
   uint8_t getPayloadUnitStartIndicator();
@@ -93,10 +93,8 @@ public:
   uint8_t getAdaptationFieldControl();
   uint8_t getContinuityCounter();
 public:
-  //TODO
+  
   bool     hasAdaptationField() const;
-  bool     hasPayload        () const { /*TODO*/ }
-
 };
 
 //=============================================================================================================================================================================
@@ -107,12 +105,28 @@ protected:
 //AF length
 uint8_t AFL;
 //mandatory fields
-uint8_t FLAGS;
 uint8_t AFC;
-uint64_t PCR;
-uint64_t OPCR;
+uint8_t FLAGS;
+uint8_t Stuffing;
+bool DC;
+bool RA;
+bool SP;
+bool PR;
+bool OR;
+bool SPF;
+bool TP;
+bool EX;
+//optional fields
+uint64_t PCR_base;
+uint8_t PR_reserved;
+uint16_t PCR_extension;
+
+uint64_t OPCR_base;
+uint8_t OR_reserved;
+uint16_t OPCR_extension;
+
 public:
-void Reset(); /*TODO*/
+void Reset(); 
 int32_t Parse(const uint8_t* Input, uint8_t AdaptationFieldControl);
 void Print() const;
 public:
@@ -145,8 +159,11 @@ protected:
     uint8_t m_StreamId;
     uint16_t m_PacketLength;
     uint16_t m_HeaderLength;
+    uint8_t PTS_DTS_flags;
+    uint64_t PTS;
+    uint64_t DTS;
     public:
-        void Reset() {};
+        void Reset();
     int32_t Parse(const uint8_t* Input);
     void Print() const;
     public:
@@ -182,8 +199,8 @@ protected:
     bool m_Started;
     xPES_PacketHeader m_PESH;
 public:
-    xPES_Assembler() { Init(136); }
-    ~xPES_Assembler() {}
+    xPES_Assembler() {}
+    ~xPES_Assembler() { delete m_Buffer; }
     void Init(int32_t PID);
     eResult AbsorbPacket(const uint8_t* TransportStreamPacket, xTS_PacketHeader* PacketHeader,  xTS_AdaptationField* AdaptationField);
     void PrintPESH() const;

@@ -28,18 +28,19 @@ int32_t xTS_PacketHeader::Parse(const uint8_t* Input) {
 
 void xTS_PacketHeader::Reset() {
     SB, E, S, T, PID, TSC, AFC, CC = 0;
+    
 }
 
 void xTS_PacketHeader::Print() const {
-
-    printf("SB: %d ", SB);
-    printf("E: %d ", E);
-    printf("S: %d ", S);
-    printf("T: %d ", T);
-    printf("PID: %d ", PID);
-    printf("TSC: %d ", TSC);
-    printf("AFC: %d ", AFC);
-    printf("CC: %d ", CC);
+    printf("TS : ");
+    printf("SB=%d ", SB);
+    printf("E=%d ", E);
+    printf("S=%d ", S);
+    printf("T=%d ", T);
+    printf("PID=%d ", PID);
+    printf("TSC=%d ", TSC);
+    printf("AFC=%d ", AFC);
+    printf("CC=%d ", CC);
 
 }
 
@@ -89,51 +90,99 @@ int32_t xTS_AdaptationField::Parse(const uint8_t* Input, uint8_t AdaptationField
     if ((AdaptationFieldControl == 1) || (AdaptationFieldControl == 3)) {
         AFL = Input[pointer++]; //4
         FLAGS = Input[pointer++];  //5
+        Stuffing = AFL - 1;
     }
 
     else {
         AFL = 0;
         FLAGS = 0;
+        Stuffing = 0;
     }
+    
+    DC = (FLAGS & 0x80) >> 7;
+    RA = (FLAGS & 0x40) >> 6;
+    SP = (FLAGS & 0x20) >> 5;
+    PR = (FLAGS & 0x10) >> 4; 
+    OR = (FLAGS & 0x08) >> 3;  
+    SPF = (FLAGS & 0x04) >> 2;
+    TP = (FLAGS & 0x02) >> 1;
+    EX = FLAGS & 0x01;
+
 
     //Is PCR_FLAG
-    if (0b00010000 & FLAGS) {
-        PCR = convertFrom8To64(0, 0, Input[++pointer], Input[++pointer],
-            Input[++pointer], Input[++pointer], Input[++pointer], Input[++pointer]);
+    if (PR) {
+
+        PCR_base = convertFrom8To64(0, 0, 0,
+            Input[pointer], Input[pointer + 1], Input[pointer + 2], Input[pointer + 3], Input[pointer + 4]);
+        pointer += 4;
+
+        PCR_base >>= 7;
+
+        PR_reserved = (Input[pointer] & 0x7E);
+        PR_reserved >>= 1;
+        PCR_extension = Input[pointer] & 0x1;
+        PCR_extension = convertFrom8To16(PCR_extension, Input[pointer + 1]);
+        pointer += 1;
+        Stuffing -= 6;
     }
     //Is OPCR_FLAG
-    if (0b00001000 & FLAGS) {
-        OPCR = convertFrom8To64(0, 0, Input[++pointer], Input[++pointer],
-            Input[++pointer], Input[++pointer], Input[++pointer], Input[++pointer]);
-    }
+    if (OR) {
+        OPCR_base = convertFrom8To64(0, 0, 0,
+            Input[pointer], Input[pointer + 1], Input[pointer + 2], Input[pointer + 3], Input[pointer + 4]);
+        pointer += 4;
 
+        PCR_base >>= 7;
+
+        OR_reserved = (Input[pointer] & 0x7E);
+        OR_reserved >>= 1;
+        OPCR_extension = Input[pointer] & 0x1;
+        OPCR_extension = convertFrom8To16(PCR_extension, Input[pointer + 1]);
+        pointer += 1;
+        Stuffing -= 6;
+    }
+    if (SPF) {
+        Stuffing -= 1;
+    }
+    if (TP) {
+        Stuffing -= 1;
+    }
+    if (EX) {
+        Stuffing -= 2;
+    }
 
     return 0;
 }
 void xTS_AdaptationField::Reset() {
     AFL = 0;
     FLAGS = 0;
+    PCR_base = 0;
+    PR_reserved = 0;
+    PCR_extension = 0;
+    OPCR_base = 0;
+    OR_reserved = 0;
+    OPCR_extension = 0;
+    DC, RA, SP, PR, OR, SPF, TP, EX = 0;
 }
-
 
 void xTS_AdaptationField::Print() const {
 
     if (AFL != 0) {
-        printf("AFL: %d ", AFL);
-        printf("DC: %d ", (FLAGS & 0x80) ? 1 : 0);
-        printf("RA: %d ", (FLAGS & 0x40) ? 1 : 0);
-        printf("SP: %d ", (FLAGS & 0x20) ? 1 : 0);
-        printf("PR: %d ", (FLAGS & 0x10) ? 1 : 0);
-        printf("OR: %d ", (FLAGS & 0x8) ? 1 : 0);
-        printf("SP: %d ", (FLAGS & 0x4) ? 1 : 0);
-        printf("TP: %d ", (FLAGS & 0x2) ? 1 : 0);
-        printf("EX: %d ", (FLAGS & 0x1) ? 1 : 0);
+        printf("AF : ");
+        printf("AFL=%d ", AFL);
+        printf("DC=%d ", (DC) ? 1 : 0);
+        printf("RA=%d ", (RA) ? 1 : 0);
+        printf("SP=%d ", (SP) ? 1 : 0);
+        printf("PR=%d ", (PR) ? 1 : 0);
+        printf("OR=%d ", (OR) ? 1 : 0);
+        printf("SP=%d ", (SP) ? 1 : 0);
+        printf("TP=%d ", (TP) ? 1 : 0);
+        printf("EX=%d ", (EX) ? 1 : 0);
     }
-    //if (0b00010000 & FLAGS) { printf("PCR: %d ", PCR); }
-    //if (0b00001000 & FLAGS) { printf("OPCR: %d ", OPCR); }
+    if (PR) { printf("PCR=%d ", (PCR_base * xTS::BaseToExtendedClockMultiplier) + PCR_extension); }
+    if (OR) { printf("OPCR=%d ", (OPCR_base * xTS::BaseToExtendedClockMultiplier) + OPCR_extension); }
 
     if (AFC == 3) {
-        printf("Stuffing: %d ", AFL - 1);
+        printf("Stuffing: %d ", Stuffing);
     }
 
 
@@ -159,9 +208,9 @@ int32_t xPES_PacketHeader::Parse(const uint8_t* Input) {
     m_StreamId = Input[3];
     m_PacketLength = convertFrom8To16(Input[4], Input[5]);
     if (m_PacketLength == 0)
-       // printf("PES packet length is neither specified nor bounded and is allowed only in PES packets whose payload consists of bytes from a video elementary stream contained in transport stream packets.");
-    m_HeaderLength = 6;
-   
+        // printf("PES packet length is neither specified nor bounded and is allowed only in PES packets whose payload consists of bytes from a video elementary stream contained in transport stream packets.");
+        m_HeaderLength = 6;
+
 
     if (
         m_StreamId != 0xBC &&
@@ -175,14 +224,50 @@ int32_t xPES_PacketHeader::Parse(const uint8_t* Input) {
         m_HeaderLength = 9;
 
 
+        PTS_DTS_flags =  (Input[7] & 0b11000000)>>6;
+
         if ((Input[7] & 0b11000000) == 0b11000000) {
 
             m_HeaderLength += 10;
+
+            PTS = Input[9] & 0b1110;
+            PTS <<= 7;
+            PTS += Input[10];
+            PTS <<= 8;
+            PTS += Input[11] & 0b11111110;
+            PTS <<= 7;
+            PTS += Input[12];
+            PTS <<= 7;
+            PTS += Input[13] >> 1;
+
+
+            DTS = Input[14] & 0b1110;
+            DTS <<= 7;
+            DTS += Input[15];
+            DTS <<= 8;
+            DTS += Input[16] & 0b11111110;
+            DTS <<= 7;
+            DTS += Input[17];
+            DTS <<= 7;
+            DTS += Input[18] >> 1;
+
+            
         }
         else if ((Input[7] & 0b10000000) == 0b10000000) {
             m_HeaderLength += 5;
+            
+            PTS = Input[9] & 0b1110;
+            PTS <<= 7;
+            PTS += Input[10];
+            PTS <<= 8;
+            PTS += Input[11] & 0b11111110;
+            PTS <<= 7;
+            PTS += Input[12];
+            PTS <<= 7;
+            PTS += Input[13]>>1;
+            
         }
-        
+
         //ESCR_flag == '1'
         if (Input[7] & 0b00100000) {
             m_HeaderLength += 6;
@@ -231,15 +316,31 @@ int32_t xPES_PacketHeader::Parse(const uint8_t* Input) {
         }
 
     }
-    
+
     return m_PacketStartCodePrefix;
 }
 
 void xPES_PacketHeader::Print() const {
-    printf("PSCP: %d ", m_PacketStartCodePrefix);
-    printf("SID: %d ", m_StreamId);
-    printf("PacketLength: %d ", m_PacketLength);
+    printf("PES : ");
+    printf("PSCP=%d ", m_PacketStartCodePrefix);
+    printf("SID=%d ", m_StreamId);
+    printf("PacketLength=%d ", m_PacketLength);
+    if (PTS_DTS_flags == 0b10)
+        printf("PTS=%d ", PTS);
+
+    if (PTS_DTS_flags == 0b11){
+            printf("PTS=%d ", PTS);
+            printf("DTS=%d ", DTS);
+        }
 };
+
+void xPES_PacketHeader::Reset() {
+    m_PacketStartCodePrefix, m_StreamId, m_PacketLength, m_HeaderLength, PTS_DTS_flags = 0;
+    PTS, DTS = 0;
+};
+
+
+
 uint8_t xPES_PacketHeader::getHeaderLength() const { return m_HeaderLength; }
 uint16_t xPES_PacketHeader::getPacketLength() const { return m_PacketLength; }
 uint32_t xPES_PacketHeader::getPacketStartCodePrefix() const { return m_PacketStartCodePrefix; }
